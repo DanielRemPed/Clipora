@@ -6,7 +6,6 @@ import os
 
 app = Flask(__name__)
 
-# login and registration database setup
 app.secret_key = "clipora_secret_key"
 
 UPLOAD_FOLDER = "static/uploads"
@@ -19,6 +18,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 def init_db():
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
@@ -27,18 +27,21 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL
         )
     """)
+
     conn.commit()
     conn.close()
 
+
 init_db()
+
 
 @app.route("/")
 def home():
     return render_template("index.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -48,21 +51,28 @@ def register():
 
         if not username or not password:
             return render_template("register.html", error="Please enter a username and password.")
-        
-    hashed_password = generate_password_hash(password)
 
-    try:
-        conn  = sqlite3.connect("database.db")
-        cursor = conn.cursor()
+        hashed_password = generate_password_hash(password)
 
-        cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, hashed_password))
-        conn.commit()
-        conn.close()
-        return redirect(url_for("login"))
-    except sqlite3.IntegrityError:
-        return render_template("register.html", error="Username already exists. Please choose a different username.")
-    
+        try:
+            conn = sqlite3.connect("database.db")
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                (username, hashed_password)
+            )
+
+            conn.commit()
+            conn.close()
+
+            return redirect(url_for("login"))
+
+        except sqlite3.IntegrityError:
+            return render_template("register.html", error="Username already exists. Please choose a different username.")
+
     return render_template("register.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -73,9 +83,12 @@ def login():
         conn = sqlite3.connect("database.db")
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, username, password FROM users WHERE username = ?", (username,))
-        user = cursor.fetchone()
+        cursor.execute(
+            "SELECT id, username, password_hash FROM users WHERE username = ?",
+            (username,)
+        )
 
+        user = cursor.fetchone()
         conn.close()
 
         if user and check_password_hash(user[2], password):
@@ -87,10 +100,12 @@ def login():
 
     return render_template("login.html")
 
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("home"))
+
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
@@ -109,6 +124,9 @@ def upload():
 
 @app.route("/dashboard")
 def dashboard():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
     uploaded_files = []
 
     for filename in os.listdir(app.config["UPLOAD_FOLDER"]):

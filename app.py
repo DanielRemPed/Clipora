@@ -1,6 +1,7 @@
 from flask import Flask, render_template, session, url_for, request, redirect
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 import sqlite3
 import os
 
@@ -154,6 +155,36 @@ def dashboard():
                 })
 
     return render_template("dashboard.html", files=uploaded_files)
+
+@app.route("/timeline")
+def timeline():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    uploaded_files = []
+
+    user_folder = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        str(session["user_id"])
+    )
+
+    if os.path.exists(user_folder):
+        for filename in os.listdir(user_folder):
+            if allowed_file(filename):
+                file_path = os.path.join(user_folder, filename)
+                upload_time = os.path.getmtime(file_path)
+
+                uploaded_files.append({
+                    "name": filename,
+                    "url": url_for("static", filename=f"uploads/{session['user_id']}/{filename}"),
+                    "is_video": filename.lower().endswith(("mp4", "mov", "webm")),
+                    "timestamp": upload_time,
+                    "uploaded_at": datetime.fromtimestamp(upload_time).strftime("%B %d, %Y at %I:%M %p")
+                })
+
+    uploaded_files.sort(key=lambda file: file["timestamp"])
+
+    return render_template("timeline.html", files=uploaded_files)
 
 
 if __name__ == "__main__":

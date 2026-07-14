@@ -12,6 +12,8 @@
 
     <a href="{{ url_for('upload') }}">Upload File</a>
     <br>
+    <a href="{{ url_for('timeline')}}"> View Timeline</a>
+    <br>
     <a href="{{ url_for('logout') }}">Logout</a>
     <br>
     <a href="{{ url_for('home') }}">Back Home</a>
@@ -21,11 +23,11 @@
     {% if files %}
         {% for file in files %}
             <div>
-                 <h3> {{filename}}</h3>
+                 <h3>{{filename}}</h3>
 
                  {% if file.is_video %}
                     <video width"300" controls>
-                        source src="{{ file.url }}">
+                        <source src="{{ file.url }}">
                     </video>
                 {% else %}
                     <img src="{{ file.url }}" alt="{{ file.filename }}" width="300">

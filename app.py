@@ -8,9 +8,9 @@ app = Flask(__name__)
 
 app.secret_key = "clipora_secret_key"
 
-UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "mp4", "mov", "webm"}
 
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -109,12 +109,22 @@ def logout():
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
+
+    if "user_id" not in session:
+        return redirect(url_for("login"))
     if request.method == "POST":
         file = request.files.get("media")
 
         if file and allowed_file(file.filename):
+            
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
+            user_folder = os.path.join(app.config["UPLOAD_FOLDER"], str(session["user_id"]))
+
+            os.makedirs(user_folder, exist_ok=True)
+
+            file.save(os.path.join(user_folder, filename))
+
             return redirect(url_for("dashboard"))
 
         return render_template("upload.html", error="Please upload a valid photo or video file.")
@@ -129,13 +139,19 @@ def dashboard():
 
     uploaded_files = []
 
-    for filename in os.listdir(app.config["UPLOAD_FOLDER"]):
-        if allowed_file(filename):
-            uploaded_files.append({
-                "name": filename,
-                "url": url_for("static", filename=f"uploads/{filename}"),
-                "is_video": filename.lower().endswith(("mp4", "mov", "webm"))
-            })
+    user_folder = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        str(session["user_id"])
+    )
+
+    if os.path.exists(user_folder):
+        for filename in os.listdir(user_folder):
+            if allowed_file(filename):
+                uploaded_files.append({
+                    "name": filename,
+                    "url": url_for("static", filename=f"uploads/{session['user_id']}/{filename}"),
+                    "is_video": filename.lower().endswith(("mp4", "mov", "webm"))
+                })
 
     return render_template("dashboard.html", files=uploaded_files)
 

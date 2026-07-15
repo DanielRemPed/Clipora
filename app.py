@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import sqlite3
 import os
+import shutil
 
 app = Flask(__name__)
 
@@ -368,8 +369,60 @@ def timeline():
 
     return render_template("timeline.html", files=uploaded_files)
 
-    
+@app.route("/delete_event/<int:event_id>", methods=["POST"])
+def delete_event(event_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
 
+    conn = None
+
+    try:
+        conn = sqlite3.connect("database.db", timeout=10)
+        cursor = conn.cursor()
+
+        # Check that this event belongs to the logged-in user
+        cursor.execute(
+            "SELECT id FROM events WHERE id = ? AND user_id = ?",
+            (event_id, session["user_id"])
+        )
+
+        event = cursor.fetchone()
+
+        if not event:
+            return redirect(url_for("dashboard"))
+
+        # Delete media records for this event
+        cursor.execute(
+            "DELETE FROM uploads WHERE event_id = ? AND user_id = ?",
+            (event_id, session["user_id"])
+        )
+
+        # Delete the event
+        cursor.execute(
+            "DELETE FROM events WHERE id = ? AND user_id = ?",
+            (event_id, session["user_id"])
+        )
+
+        conn.commit()
+
+    except sqlite3.Error as e:
+        print(f"Error occurred: {e}")
+
+    finally:
+        if conn:
+            conn.close()
+
+    # Delete uploaded files folder for this event
+    event_folder = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        str(session["user_id"]),
+        str(event_id)
+    )
+
+    if os.path.exists(event_folder):
+        shutil.rmtree(event_folder)
+
+    return redirect(url_for("dashboard"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

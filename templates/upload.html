@@ -5,24 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload File</title>
 </head>
+
 <body>
-    <h1> Upload files here</h1>
-        <p> Guest can upload files </p>
 
-        {% if error%}
-         <p style="color: red;"> {{error}}  </p>
-        {% endif %}
-        
-        <form method="POST" enctype="multipart/form-data">
-            <input type="file" name="media" accept="image/*,video/*" required>
-            <br><br>
-            <button type="submit">Upload</button>
-        </form>
+    <h1>Upload files here</h1>
+    <p>Guests can upload files</p>
 
-        <br>
-        <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
-        <br>
-        <a href="{{ url_for('home') }}">Back to Home</a>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+
+    <form method="POST" enctype="multipart/form-data">
+
+        <label>Select Event:</label>
+
+        <select name="event_id" required>
+
+            <option value="" disabled
+                {% if not selected_event %}
+                    selected
+                {% endif %}
+            >
+                -- Select an Event --
+            </option>
+
+
+            {% for event in events %}
+
+                <option 
+                    value="{{ event[0] }}"
+                    {% if selected_event and selected_event|int == event[0] %}
+                        selected
+                    {% endif %}
+                >
+                    {{ event[1] }}
+                </option>
+
+            {% endfor %}
+
+        </select>
+
+
+        <br><br>
+
+
+        <label>Select Media:</label>
+
+        <input 
+            type="file" 
+            name="media" 
+            accept="image/*,video/*" 
+            required
+        >
+
+
+        <br><br>
+
+
+        <button type="submit">
+            Upload
+        </button>
+
+    </form>
+
+
+    <br>
+
+    <a href="{{ url_for('dashboard') }}">
+        Back to Dashboard
+    </a>
+
+    <br>
+
+    <a href="{{ url_for('home') }}">
+        Back to Home
+    </a>
+
 
 </body>
 </html>

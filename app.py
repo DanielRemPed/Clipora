@@ -32,6 +32,28 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            date TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS uploads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT NOT NULL,
+        event_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        uploaded_at TEXT NOT NULL,
+        FOREIGN KEY (event_id) REFERENCES events(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -113,48 +135,185 @@ def upload():
 
     if "user_id" not in session:
         return redirect(url_for("login"))
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id, name FROM events WHERE user_id = ?",
+        (session["user_id"],)
+    )
+
+    events = cursor.fetchall()
+
+    conn.close()
+
+
+    selected_event = request.args.get("event_id")
+
+
     if request.method == "POST":
+
         file = request.files.get("media")
+        event_id = request.form.get("event_id")
+
+        # keep selected event after submit/error
+        selected_event = event_id
+
+
+        if not event_id:
+            return render_template(
+                "upload.html",
+                error="Please select an event.",
+                events=events,
+                selected_event=selected_event
+            )
+
 
         if file and allowed_file(file.filename):
-            
+
             filename = secure_filename(file.filename)
 
-            user_folder = os.path.join(app.config["UPLOAD_FOLDER"], str(session["user_id"]))
 
-            os.makedirs(user_folder, exist_ok=True)
+            event_folder = os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                str(session["user_id"]),
+                str(event_id)
+            )
 
-            file.save(os.path.join(user_folder, filename))
+            os.makedirs(event_folder, exist_ok=True)
+
+
+            file.save(
+                os.path.join(event_folder, filename)
+            )
+
+
+            conn = sqlite3.connect("database.db")
+            cursor = conn.cursor()
+
+
+            cursor.execute(
+                """
+                INSERT INTO uploads 
+                (filename, event_id, user_id, uploaded_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    filename,
+                    event_id,
+                    session["user_id"],
+                    datetime.now()
+                )
+            )
+
+
+            conn.commit()
+            conn.close()
+
 
             return redirect(url_for("dashboard"))
 
-        return render_template("upload.html", error="Please upload a valid photo or video file.")
 
-    return render_template("upload.html")
+        return render_template(
+            "upload.html",
+            error="Please upload a valid photo or video file.",
+            events=events,
+            selected_event=selected_event
+        )
 
+
+    return render_template(
+        "upload.html",
+        events=events,
+        selected_event=selected_event
+    )
+    
+@app.route("/create_event", methods=["GET", "POST"])
+def create_event():
+    
+    if "user_id" not in session:
+        return redirect(url_for("login")) 
+    
+    if request.method == "POST":
+        name = request.form.get("name")
+
+        if not name:
+            return render_template(
+                "create_event.html",
+                error="Please enter an event name"
+            )
+
+        conn = sqlite3.connect("database.db")
+        cursor = conn.cursor()
+
+        cursor.execute("INSERT INTO events (name, date, user_id) VALUES (?, ?, ?)",
+            (name, datetime.now(), session["user_id"]))
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("dashboard"))
+
+    return render_template("create_event.html")
 
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    uploaded_files = []
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
 
-    user_folder = os.path.join(
-        app.config["UPLOAD_FOLDER"],
-        str(session["user_id"])
+    # Get user's events
+    cursor.execute(
+        "SELECT id, name, date FROM events WHERE user_id = ?",
+        (session["user_id"],)
     )
 
-    if os.path.exists(user_folder):
-        for filename in os.listdir(user_folder):
-            if allowed_file(filename):
-                uploaded_files.append({
-                    "name": filename,
-                    "url": url_for("static", filename=f"uploads/{session['user_id']}/{filename}"),
-                    "is_video": filename.lower().endswith(("mp4", "mov", "webm"))
-                })
+    events = cursor.fetchall()
 
-    return render_template("dashboard.html", files=uploaded_files)
+    event_media = {}
+
+    for event in events:
+        event_id = event[0]
+
+        cursor.execute(
+            """
+            SELECT filename, uploaded_at 
+            FROM uploads
+            WHERE event_id = ? AND user_id = ?
+            ORDER BY uploaded_at DESC
+            """,
+            (event_id, session["user_id"])
+        )
+
+        media = cursor.fetchall()
+
+        event_media[event_id] = []
+
+        for item in media:
+            filename = item[0]
+
+            event_media[event_id].append({
+                "name": filename,
+                "url": url_for(
+                    "static",
+                    filename=f"uploads/{session['user_id']}/{event_id}/{filename}"
+                ),
+                "is_video": filename.lower().endswith(
+                    ("mp4", "mov", "webm")
+                ),
+                "uploaded_at": item[1]
+            })
+
+    conn.close()
+
+    return render_template(
+        "dashboard.html",
+        events=events,
+        event_media=event_media
+    )
 
 @app.route("/timeline")
 def timeline():
@@ -169,22 +328,47 @@ def timeline():
     )
 
     if os.path.exists(user_folder):
-        for filename in os.listdir(user_folder):
-            if allowed_file(filename):
-                file_path = os.path.join(user_folder, filename)
-                upload_time = os.path.getmtime(file_path)
 
-                uploaded_files.append({
-                    "name": filename,
-                    "url": url_for("static", filename=f"uploads/{session['user_id']}/{filename}"),
-                    "is_video": filename.lower().endswith(("mp4", "mov", "webm")),
-                    "timestamp": upload_time,
-                    "uploaded_at": datetime.fromtimestamp(upload_time).strftime("%B %d, %Y at %I:%M %p")
-                })
+        for event_id in os.listdir(user_folder):
+
+            event_folder = os.path.join(
+                user_folder,
+                event_id
+            )
+
+            if os.path.isdir(event_folder):
+
+                for filename in os.listdir(event_folder):
+
+                    if allowed_file(filename):
+
+                        file_path = os.path.join(
+                            event_folder,
+                            filename
+                        )
+
+                        upload_time = os.path.getmtime(file_path)
+
+                        uploaded_files.append({
+                            "name": filename,
+                            "url": url_for(
+                                "static",
+                                filename=f"uploads/{session['user_id']}/{event_id}/{filename}"
+                            ),
+                            "is_video": filename.lower().endswith(
+                                ("mp4", "mov", "webm")
+                            ),
+                            "timestamp": upload_time,
+                            "uploaded_at": datetime.fromtimestamp(upload_time).strftime(
+                                "%B %d, %Y at %I:%M %p"
+                            )
+                        })
 
     uploaded_files.sort(key=lambda file: file["timestamp"])
 
     return render_template("timeline.html", files=uploaded_files)
+
+    
 
 
 if __name__ == "__main__":

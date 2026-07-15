@@ -27,7 +27,7 @@
             <p>Uploaded: {{ file.uploaded_at }}</p>
 
             {% if file.is_video %}
-                <video width"300" controls>
+                <video width="300" controls>
                     <source src="{{ file.url }}">
                 </video>
             {% else %}

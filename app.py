@@ -466,7 +466,11 @@ def guest_upload(event_code):
             conn.commit()
             conn.close()
 
-            return "Upload successful!"
+            return render_template(
+            "guest_upload.html",
+            event=event,
+            success="Upload successful!"
+            )
 
     return render_template(
         "guest_upload.html",

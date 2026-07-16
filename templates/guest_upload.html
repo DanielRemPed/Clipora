@@ -11,6 +11,11 @@
     Upload to {{ event[1] }}
     </h1>
 
+    {% if success %}
+        <p style="color: green;">
+            {{ success }}
+        </p>
+    {% endif %}
 
     <form method="POST" enctype="multipart/form-data">
 
@@ -21,8 +26,10 @@
     required
     >
 
-    <button>
-    Upload
+    <br><br>
+
+    <button type="submit">
+        Upload Another
     </button>
 
     </form>

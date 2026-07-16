@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event[1] }}</title>
+</head>
+
+<body>
+
+    <h1>{{ event[1] }}</h1>
+
+    <p>{{ event[2] }}</p>
+
+    <a href="{{ url_for('dashboard') }}">
+        Back to Dashboard
+    </a>
+
+    <hr>
+
+    <h2>Media</h2>
+
+    {% if media %}
+
+        {% for file in media %}
+
+            {% if file[0].lower().endswith(("mp4","mov","webm")) %}
+
+                <video width="300" controls>
+                    <source src="{{ url_for('static', filename='uploads/' + event[3] + '/' + file[0]) }}">
+                </video>
+
+            {% else %}
+
+                <img 
+                    src="{{ url_for('static', filename='uploads/' + event[3] + '/' + file[0]) }}"
+                    width="300"
+                >
+
+            {% endif %}
+
+            <p>
+                Uploaded: {{ file[1] }}
+            </p>
+
+            <hr>
+
+        {% endfor %}
+
+    {% else %}
+
+    <p>No media uploaded yet.</p>
+
+    {% endif %}
+
+</body>
+</html>

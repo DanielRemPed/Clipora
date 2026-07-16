@@ -31,41 +31,35 @@
 
 {% if events %}
     {% for event in events %}
-        <div>
-            <h3>{{ event[1] }}</h3>
-            <p>{{ event[2] }}</p>
+    <div>
+        <h3>{{ event[1] }}</h3>
+        <p>{{ event[2] }}</p>
 
+        <h4>Guest Upload QR Code:</h4>
 
-            <a  href="{{ url_for('upload', event_id=event[0]) }}">
-                Add Media
-            </a>
+        <img 
+            src="{{ url_for('static', filename='qrcodes/' + event[3] + '.png') }}"
+            width="200"
+        >
 
+        <br><br>
 
-            <h4>Media:</h4>
-            {% if event_media[event[0]] %}
-                {% for file in event_media[event[0]] %}
-                    {% if file.is_video %}
-                        <video width="300" controls>
-                            <source src="{{ file.url }}">
-                        </video>
-                    {% else %}
-                        <img 
-                        src="{{ file.url }}" 
-                        alt="{{ file.name }}"
-                        width="300">
-                    {% endif %}
-                    <p>
-                        {{ file.uploaded_at }}
-                    </p>
-                    <br>
-                {% endfor %}
-            {% else %}
-                <p>No media uploaded for this event.</p>
-            {% endif %}
-        </div>
-        <hr>
+        <a href="{{ url_for('event_page', event_id=event[0]) }}">
+            View Event
+        </a>
+
+        <br><br>
+
+        <a href="{{ url_for('upload', event_id=event[0]) }}">
+            Add Media
+        </a>
+
+    </div>
+
+    <hr>
 
     {% endfor %}
+
 {% else %}
     <p>No events created yet.</p>
 {% endif %}

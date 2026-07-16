@@ -64,10 +64,10 @@ def init_db():
 def create_qr(event_code):
 
     #For deployment on render: 
-    #url = f"https://clipora-gvuj.onrender.com/guest_upload/{event_code}"
+    url = f"https://clipora-1.onrender.com/guest_upload/{event_code}"
     
     #For virtual environment:
-    url = f"http://127.0.0.1:5001/guest_upload/{event_code}"
+    #url = f"http://127.0.0.1:5001/guest_upload/{event_code}"
 
     img = qrcode.make(url)
 

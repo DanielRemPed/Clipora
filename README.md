@@ -140,7 +140,7 @@ Clipora/
 ## Team Members
 
 - Om Patel
-- Noah
+- Noah Mua
 - Daniel Remigio
 
 ## Purpose

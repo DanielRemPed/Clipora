@@ -376,6 +376,25 @@ input:focus {
     font-size: 14px;
 }
 
+.delete-form {
+    margin-top: 12px;
+}
+
+.inline-delete {
+    display: inline-block;
+}
+
+.delete-button {
+    background: #b42318;
+    color: var(--white);
+    padding: 8px 14px;
+    font-size: 14px;
+}
+
+.delete-button:hover {
+    background: #8f1d14;
+}
+
 .file-drop {
     display: block;
     border: 2px dashed var(--main);

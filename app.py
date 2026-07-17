@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import sqlite3
 import os
+import shutil
 import uuid
 import qrcode
 
@@ -363,6 +364,43 @@ def dashboard():
         event_media=event_media
     )
 
+@app.route("/delete_event/<int:event_id>", methods=["POST"])
+def delete_event(event_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT event_code FROM events WHERE id = ? AND user_id = ?",
+        (event_id, session["user_id"])
+    )
+
+    event = cursor.fetchone()
+
+    if not event:
+        conn.close()
+        return redirect(url_for("dashboard"))
+
+    event_code = event[0]
+
+    cursor.execute("DELETE FROM uploads WHERE event_id = ?", (event_id,))
+    cursor.execute("DELETE FROM events WHERE id = ? AND user_id = ?", (event_id, session["user_id"]))
+    conn.commit()
+    conn.close()
+
+    event_folder = os.path.join(app.config["UPLOAD_FOLDER"], event_code)
+    qr_path = os.path.join(app.root_path, "static", "qrcodes", event_code + ".png")
+
+    if os.path.exists(event_folder):
+        shutil.rmtree(event_folder)
+
+    if os.path.exists(qr_path):
+        os.remove(qr_path)
+
+    return redirect(url_for("dashboard"))
+
 @app.route("/timeline")
 def timeline():
     if "user_id" not in session:
@@ -527,7 +565,7 @@ def event_page(event_id):
 
     cursor.execute(
         """
-        SELECT filename, uploaded_at
+        SELECT id, filename, uploaded_at
         FROM uploads
         WHERE event_id = ?
         ORDER BY uploaded_at ASC
@@ -548,6 +586,45 @@ def event_page(event_id):
         event=event,
         media=media
     )
+
+@app.route("/delete_media/<int:upload_id>", methods=["POST"])
+def delete_media(upload_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT uploads.filename, uploads.event_id, events.event_code
+        FROM uploads
+        JOIN events ON uploads.event_id = events.id
+        WHERE uploads.id = ? AND events.user_id = ?
+        """,
+        (upload_id, session["user_id"])
+    )
+
+    media = cursor.fetchone()
+
+    if not media:
+        conn.close()
+        return redirect(url_for("dashboard"))
+
+    filename = media[0]
+    event_id = media[1]
+    event_code = media[2]
+
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], event_code, filename)
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    cursor.execute("DELETE FROM uploads WHERE id = ?", (upload_id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("event_page", event_id=event_id))
     
 
 

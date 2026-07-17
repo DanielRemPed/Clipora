@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import sqlite3
 import os
+import uuid
+import qrcode
 
 app = Flask(__name__)
 
@@ -21,6 +23,7 @@ def allowed_file(filename):
 
 
 def init_db():
+
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
@@ -38,6 +41,7 @@ def init_db():
             name TEXT NOT NULL,
             date TEXT NOT NULL,
             user_id INTEGER NOT NULL,
+            event_code TEXT UNIQUE NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
@@ -47,7 +51,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         filename TEXT NOT NULL,
         event_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
+        user_id INTEGER,
         uploaded_at TEXT NOT NULL,
         FOREIGN KEY (event_id) REFERENCES events(id),
         FOREIGN KEY (user_id) REFERENCES users(id)
@@ -57,6 +61,21 @@ def init_db():
     conn.commit()
     conn.close()
 
+def create_qr(event_code):
+
+    #For deployment on render: 
+    url = f"https://clipora-1.onrender.com/guest_upload/{event_code}"
+    
+    #For virtual environment:
+    #url = f"http://127.0.0.1:5001/guest_upload/{event_code}"
+
+    img = qrcode.make(url)
+
+    os.makedirs("static/qrcodes", exist_ok=True)
+
+    img.save(
+        f"static/qrcodes/{event_code}.png"
+    )
 
 init_db()
 
@@ -140,7 +159,7 @@ def upload():
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT id, name FROM events WHERE user_id = ?",
+        "SELECT id, name, event_code FROM events WHERE user_id = ?",
         (session["user_id"],)
     )
 
@@ -174,15 +193,26 @@ def upload():
 
             filename = secure_filename(file.filename)
 
+            # Get event_code
+            conn = sqlite3.connect("database.db")
+            cursor = conn.cursor()
 
+            cursor.execute(
+                "SELECT event_code FROM events WHERE id = ?",
+                (event_id,)
+            )
+
+            event_code = cursor.fetchone()[0]
+
+            conn.close()
+
+            # Save using event_code
             event_folder = os.path.join(
                 app.config["UPLOAD_FOLDER"],
-                str(session["user_id"]),
-                str(event_id)
+                event_code
             )
 
             os.makedirs(event_folder, exist_ok=True)
-
 
             file.save(
                 os.path.join(event_folder, filename)
@@ -247,11 +277,15 @@ def create_event():
         conn = sqlite3.connect("database.db")
         cursor = conn.cursor()
 
-        cursor.execute("INSERT INTO events (name, date, user_id) VALUES (?, ?, ?)",
-            (name, datetime.now(), session["user_id"]))
+        event_code = str(uuid.uuid4())[:8]
+
+        cursor.execute("INSERT INTO events (name, date, user_id, event_code) VALUES (?, ?, ?, ?)",
+            (name, datetime.now(), session["user_id"], event_code))
 
         conn.commit()
         conn.close()
+
+        create_qr(event_code)
 
         return redirect(url_for("dashboard"))
 
@@ -267,7 +301,7 @@ def dashboard():
 
     # Get user's events
     cursor.execute(
-        "SELECT id, name, date FROM events WHERE user_id = ?",
+        "SELECT id, name, date, event_code FROM events WHERE user_id = ?",
         (session["user_id"],)
     )
 
@@ -277,6 +311,7 @@ def dashboard():
 
     for event in events:
         event_id = event[0]
+        event_code = event[3]
 
         cursor.execute(
             """
@@ -299,7 +334,7 @@ def dashboard():
                 "name": filename,
                 "url": url_for(
                     "static",
-                    filename=f"uploads/{session['user_id']}/{event_id}/{filename}"
+                    filename=f"uploads/{event_code}/{filename}"
                 ),
                 "is_video": filename.lower().endswith(
                     ("mp4", "mov", "webm")
@@ -353,7 +388,7 @@ def timeline():
                             "name": filename,
                             "url": url_for(
                                 "static",
-                                filename=f"uploads/{session['user_id']}/{event_id}/{filename}"
+                                filename=f"uploads/{event_id}/{filename}"
                             ),
                             "is_video": filename.lower().endswith(
                                 ("mp4", "mov", "webm")
@@ -368,6 +403,138 @@ def timeline():
 
     return render_template("timeline.html", files=uploaded_files)
 
+@app.route("/guest_upload/<event_code>", methods=["GET","POST"])
+def guest_upload(event_code):
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id, name
+        FROM events
+        WHERE event_code = ?
+        """,
+        (event_code,)
+    )
+
+    event = cursor.fetchone()
+
+    if not event:
+        conn.close()
+        return "Invalid event"
+
+    event_id = event[0]
+
+    if request.method == "POST":
+
+        file = request.files.get("media")
+
+        if file and allowed_file(file.filename):
+
+            filename = secure_filename(file.filename)
+
+            event_folder = os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                event_code
+            )
+
+            os.makedirs(event_folder, exist_ok=True)
+
+            file.save(
+                os.path.join(event_folder, filename)
+            )
+
+            conn = sqlite3.connect("database.db")
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                INSERT INTO uploads
+                (filename, event_id, user_id, uploaded_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    filename,
+                    event_id,
+                    None,
+                    datetime.now()
+                )
+            )
+
+            conn.commit()
+
+
+    # Get all media for this event
+    cursor.execute(
+        """
+        SELECT filename, uploaded_at
+        FROM uploads
+        WHERE event_id = ?
+        ORDER BY uploaded_at ASC
+        """,
+        (event_id,)
+    )
+
+    media = cursor.fetchall()
+
+    conn.close()
+
+
+    return render_template(
+        "guest_upload.html",
+        event=event,
+        event_code=event_code,
+        media=media
+    )
+
+@app.route("/event/<int:event_id>")
+def event_page(event_id):
+    
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id, name, date, event_code
+        FROM events
+        WHERE id = ? AND user_id = ?
+        """,
+        (event_id, session["user_id"])
+    )
+
+    event = cursor.fetchone()
+
+    if not event:
+        conn.close()
+        return "Event not found"
+
+    cursor.execute(
+        """
+        SELECT filename, uploaded_at
+        FROM uploads
+        WHERE event_id = ?
+        ORDER BY uploaded_at ASC
+        """,
+        (event_id,)
+    )
+
+    media = cursor.fetchall()
+
+    print("EVENT PAGE LOADED:", event_id)
+    print("EVENT:", event)
+    print("MEDIA:", media)
+
+    conn.close()
+
+    return render_template(
+        "event.html",
+        event=event,
+        media=media
+    )
     
 
 

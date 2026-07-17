@@ -141,7 +141,7 @@ Clipora/
 
 - Om Patel
 - Noah
-- Daniel
+- Daniel Remigio
 
 ## Purpose
 

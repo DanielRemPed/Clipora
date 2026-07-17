@@ -1,71 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ event[1] }}</title>
+    <title>{{ event[1] }} | Clipora</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
-
 <body>
+    <nav class="app-nav">
+        <a class="brand" href="{{ url_for('home') }}">Clipora</a>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+        </div>
+    </nav>
 
-<h1>{{ event[1] }}</h1>
+    <main class="page-shell">
+        <section class="page-header">
+            <p class="eyebrow">Guest upload</p>
+            <h1>{{ event[1] }}</h1>
+            <p>Upload photos and videos from this event.</p>
+        </section>
 
-<p>Upload photos and videos from this event.</p>
+        <form class="upload-card" method="POST" enctype="multipart/form-data">
+            <label class="file-drop" for="media">
+                <span>Choose a photo or video</span>
+                <small>PNG, JPG, GIF, MP4, MOV, or WEBM</small>
+            </label>
+            <input id="media" type="file" name="media" accept="image/*,video/*" required>
+            <button class="button primary full" type="submit">Upload</button>
+        </form>
 
-<h2>Add Media</h2>
+        <section class="page-header guest-gallery-title">
+            <p class="eyebrow">Event Gallery</p>
+            <h1>Shared media</h1>
+        </section>
 
-<form method="POST" enctype="multipart/form-data">
+        {% if media %}
+            <section class="timeline-list">
+                {% for file in media %}
+                    <article class="timeline-item {{ loop.cycle('left', 'right') }}">
+                        <div class="timeline-marker"></div>
+                        <div class="media-card timeline-card">
+                            <div class="media-preview">
+                                {% if file[0].lower().endswith(("mp4","mov","webm")) %}
+                                    <video controls>
+                                        <source src="{{ url_for('static', filename='uploads/' + event_code + '/' + file[0]) }}">
+                                    </video>
+                                {% else %}
+                                    <a class="media-link" href="#guest-media-{{ loop.index }}">
+                                        <img src="{{ url_for('static', filename='uploads/' + event_code + '/' + file[0]) }}" alt="{{ file[0] }}">
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <div class="media-body">
+                                <h2>{{ file[0] }}</h2>
+                                <p>Uploaded {{ file[1]|format_date }}</p>
+                                <span class="file-badge">{% if file[0].lower().endswith(("mp4","mov","webm")) %}Video{% else %}Photo{% endif %}</span>
+                                {% if file[0].lower().endswith(("mp4","mov","webm")) %}
+                                    <a class="open-original" href="{{ url_for('static', filename='uploads/' + event_code + '/' + file[0]) }}" target="_blank">Open video</a>
+                                {% else %}
+                                    <a class="open-original" href="#guest-media-{{ loop.index }}">View full size</a>
+                                {% endif %}
+                            </div>
+                        </div>
 
-    <input 
-        type="file" 
-        name="media"
-        accept="image/*,video/*"
-        required
-    >
-
-    <br><br>
-
-    <button type="submit">
-        Upload
-    </button>
-
-</form>
-
-<hr>
-
-<h2>Event Gallery</h2>
-{% if media %}
-    {% for file in media %}
-        {% if file[0].lower().endswith(("mp4","mov","webm")) %}
-
-            <video width="300" controls>
-                <source 
-                src="{{ url_for(
-                    'static',
-                    filename='uploads/' + event_code + '/' + file[0]
-                ) }}">
-            </video>
-
+                        {% if not file[0].lower().endswith(("mp4","mov","webm")) %}
+                            <div class="lightbox" id="guest-media-{{ loop.index }}">
+                                <div class="lightbox-panel">
+                                    <div class="lightbox-actions">
+                                        <a class="button secondary" href="{{ url_for('static', filename='uploads/' + event_code + '/' + file[0]) }}" target="_blank">Open original</a>
+                                        <a class="button primary" href="#">Close</a>
+                                    </div>
+                                    <img src="{{ url_for('static', filename='uploads/' + event_code + '/' + file[0]) }}" alt="{{ file[0] }}">
+                                </div>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </section>
         {% else %}
-            <img
-            src="{{ url_for(
-                'static',
-                filename='uploads/' + event_code + '/' + file[0]
-            ) }}"
-            width="300">
+            <section class="empty-state">
+                <p class="eyebrow">No media yet</p>
+                <h2>Be the first to upload.</h2>
+                <p>Photos and videos added by guests will appear here.</p>
+            </section>
         {% endif %}
-        <p>
-            Uploaded: {{ file[1] }}
-        </p>
-
-        <hr>
-    {% endfor %}
-
-{% else %}
-    <p>No media uploaded yet.</p>
-{% endif %}
-
+    </main>
 </body>
-
 </html>

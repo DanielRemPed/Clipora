@@ -3,85 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload File</title>
+    <title>Upload | Clipora</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
-
 <body>
+    <nav class="app-nav">
+        <a class="brand" href="{{ url_for('home') }}">Clipora</a>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('create_event') }}">Create Event</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </nav>
 
-    <h1>Upload files here</h1>
-    <p>Guests can upload files</p>
+    <main class="page-shell narrow">
+        <section class="page-header">
+            <p class="eyebrow">Add memories</p>
+            <h1>Upload media</h1>
+            <p>Select an event, then add a photo or video to its gallery.</p>
+        </section>
 
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% endif %}
+        {% if error %}
+            <p class="alert">{{ error }}</p>
+        {% endif %}
 
+        <form class="upload-card" method="POST" enctype="multipart/form-data">
+            <label for="event_id">Select Event</label>
+            <select id="event_id" name="event_id" required>
+                <option value="" disabled {% if not selected_event %}selected{% endif %}>-- Select an Event --</option>
+                {% for event in events %}
+                    <option value="{{ event[0] }}" {% if selected_event and selected_event|int == event[0] %}selected{% endif %}>
+                        {{ event[1] }}
+                    </option>
+                {% endfor %}
+            </select>
 
-    <form method="POST" enctype="multipart/form-data">
+            <label class="file-drop" for="media">
+                <span>Choose a photo or video</span>
+                <small>PNG, JPG, GIF, MP4, MOV, or WEBM</small>
+            </label>
+            <input id="media" type="file" name="media" accept="image/*,video/*" required>
 
-        <label>Select Event:</label>
-
-        <select name="event_id" required>
-
-            <option value="" disabled
-                {% if not selected_event %}
-                    selected
-                {% endif %}
-            >
-                -- Select an Event --
-            </option>
-
-
-            {% for event in events %}
-
-                <option 
-                    value="{{ event[0] }}"
-                    {% if selected_event and selected_event|int == event[0] %}
-                        selected
-                    {% endif %}
-                >
-                    {{ event[1] }}
-                </option>
-
-            {% endfor %}
-
-        </select>
-
-
-        <br><br>
-
-
-        <label>Select Media:</label>
-
-        <input 
-            type="file" 
-            name="media" 
-            accept="image/*,video/*" 
-            required
-        >
-
-
-        <br><br>
-
-
-        <button type="submit">
-            Upload
-        </button>
-
-    </form>
-
-
-    <br>
-
-    <a href="{{ url_for('dashboard') }}">
-        Back to Dashboard
-    </a>
-
-    <br>
-
-    <a href="{{ url_for('home') }}">
-        Back to Home
-    </a>
-
-
+            <button class="button primary full" type="submit">Upload</button>
+        </form>
+    </main>
 </body>
 </html>

@@ -420,9 +420,8 @@ def guest_upload(event_code):
 
     event = cursor.fetchone()
 
-    conn.close()
-
     if not event:
+        conn.close()
         return "Invalid event"
 
     event_id = event[0]
@@ -464,17 +463,29 @@ def guest_upload(event_code):
             )
 
             conn.commit()
-            conn.close()
 
-            return render_template(
-            "guest_upload.html",
-            event=event,
-            success="Upload successful!"
-            )
+
+    # Get all media for this event
+    cursor.execute(
+        """
+        SELECT filename, uploaded_at
+        FROM uploads
+        WHERE event_id = ?
+        ORDER BY uploaded_at ASC
+        """,
+        (event_id,)
+    )
+
+    media = cursor.fetchall()
+
+    conn.close()
+
 
     return render_template(
         "guest_upload.html",
-        event=event
+        event=event,
+        event_code=event_code,
+        media=media
     )
 
 @app.route("/event/<int:event_id>")

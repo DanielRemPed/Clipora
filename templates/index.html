@@ -1,22 +1,66 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipora</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <main>
+        <section class="hero">
+            <nav class="topbar">
+                <a class="brand" href="{{ url_for('home') }}">Clipora</a>
+                <div class="nav-links">
+                    <a href="{{ url_for('login') }}">Login</a>
+                    <a href="{{ url_for('register') }}">Register</a>
+                    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                </div>
+            </nav>
 
-<html>
-    <head>
-        <h1>Clipora</h1>
-    </head>
-    <body>
-        <h2>Welcome to Clipora</h2>
+            <section class="hero-content">
+                <p class="eyebrow">Private event gallery</p>
+                <h1>Capture every moment in one polished timeline.</h1>
+                <p class="hero-copy">
+                    Clipora gives your group one simple place to create events, share QR codes,
+                    upload photos, and look back through the memories.
+                </p>
+                <div class="hero-actions">
+                    <a class="button primary" href="{{ url_for('register') }}">Create account</a>
+                    <a class="button secondary" href="{{ url_for('login') }}">Sign in</a>
+                </div>
+            </section>
+        </section>
 
-        <p>Capture every moment</p>
-        
-        <br>
-        <a href="{{url_for('login')}}">Login Page</a>
-        <br>
-        <a href="{{url_for('register')}}">Register Page</a>
-        <br>
-        <a href="{{ url_for('upload') }}">Upload Page</a>
-        <br>
-        <a href="{{ url_for('dashboard')}}">Dashboard</a>
-    </body>
+        <section class="home-info">
+            <div class="home-info-header">
+                <p class="eyebrow">What Clipora does</p>
+                <h2>One place for everyone to share the moments.</h2>
+                <p>
+                    Create an event, get a QR code, and let guests upload photos and videos.
+                    Everything stays organized in the event gallery.
+                </p>
+            </div>
 
+            <div class="feature-grid">
+                <article>
+                    <h3>Create events</h3>
+                    <p>Make a separate space for each event or group memory.</p>
+                </article>
+                <article>
+                    <h3>Share QR codes</h3>
+                    <p>Guests can scan the QR code and upload without logging in.</p>
+                </article>
+                <article>
+                    <h3>View galleries</h3>
+                    <p>Photos and videos appear together in a clean event page.</p>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        Made by Om Patel, Noah, Daniel.
+    </footer>
+</body>
 </html>

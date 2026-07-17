@@ -136,16 +136,6 @@ Clipora/
     └── qrcodes/
 ```
 
-## Files Not Included
-
-The following files should not be uploaded to GitHub:
-
-- `venv/`
-- `database.db`
-- `__pycache__/`
-- `.DS_Store`
-- Uploaded photos and videos
-- Generated QR code images
 
 ## Team Members
 

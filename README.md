@@ -2,6 +2,14 @@
 
 Clipora is a web application built with Flask that helps event organizers collect photos and videos from guests in one shared gallery. Instead of asking guests to send media through texts, email, or group chats, Clipora creates a unique QR code for each event so guests can upload directly to the correct event page.
 
+## Live Demo
+
+Try Clipora here:
+
+**https://clipora-gvuj.onrender.com**
+
+---
+
 ## Features
 
 ### Account Management

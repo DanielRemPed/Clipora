@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event[1] }} | Clipora</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <nav class="app-nav">
+        <a class="brand" href="{{ url_for('home') }}">Clipora</a>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('upload', event_id=event[0]) }}">Add Media</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </nav>
+
+    <main class="page-shell">
+        <section class="page-header">
+            <p class="eyebrow">Event gallery</p>
+            <h1>{{ event[1] }}</h1>
+            <p>{{ event[2]|format_date }}</p>
+            <div class="page-actions">
+                <a class="button primary" href="{{ url_for('upload', event_id=event[0]) }}">Add Media</a>
+                <a class="button secondary" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+            </div>
+        </section>
+
+        {% if media %}
+            <section class="timeline-list">
+                {% for file in media %}
+                    <article class="timeline-item {{ loop.cycle('left', 'right') }}">
+                        <div class="timeline-marker"></div>
+                        <div class="media-card timeline-card">
+                            <div class="media-preview">
+                                {% if file[1].lower().endswith(("mp4","mov","webm")) %}
+                                    <video controls>
+                                        <source src="{{ url_for('static', filename='uploads/' + event[3] + '/' + file[1]) }}">
+                                    </video>
+                                {% else %}
+                                    <a class="media-link" href="#event-media-{{ loop.index }}">
+                                        <img src="{{ url_for('static', filename='uploads/' + event[3] + '/' + file[1]) }}" alt="{{ file[1] }}">
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <div class="media-body">
+                                <h2>{{ file[1] }}</h2>
+                                <p>Uploaded {{ file[2]|format_date }}</p>
+                                <span class="file-badge">{% if file[1].lower().endswith(("mp4","mov","webm")) %}Video{% else %}Photo{% endif %}</span>
+                                {% if file[1].lower().endswith(("mp4","mov","webm")) %}
+                                    <a class="open-original" href="{{ url_for('static', filename='uploads/' + event[3] + '/' + file[1]) }}" target="_blank">Open video</a>
+                                {% else %}
+                                    <a class="open-original" href="#event-media-{{ loop.index }}">View full size</a>
+                                {% endif %}
+                                <form class="delete-form" method="POST" action="{{ url_for('delete_media', upload_id=file[0]) }}" onsubmit="return confirm('Delete this upload?');">
+                                    <button class="delete-button" type="submit">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        {% if not file[1].lower().endswith(("mp4","mov","webm")) %}
+                            <div class="lightbox" id="event-media-{{ loop.index }}">
+                                <div class="lightbox-panel">
+                                    <div class="lightbox-actions">
+                                        <a class="button secondary" href="{{ url_for('static', filename='uploads/' + event[3] + '/' + file[1]) }}" target="_blank">Open original</a>
+                                        <a class="button primary" href="#">Close</a>
+                                    </div>
+                                    <img src="{{ url_for('static', filename='uploads/' + event[3] + '/' + file[1]) }}" alt="{{ file[1] }}">
+                                </div>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </section>
+        {% else %}
+            <section class="empty-state">
+                <p class="eyebrow">No media yet</p>
+                <h2>This event is ready.</h2>
+                <p>Upload the first photo or video to start the gallery.</p>
+                <a class="button primary" href="{{ url_for('upload', event_id=event[0]) }}">Add Media</a>
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Clipora</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <nav class="app-nav">
+        <a class="brand" href="{{ url_for('home') }}">Clipora</a>
+        <div class="nav-links">
+            <a href="{{ url_for('create_event') }}">Create Event</a>
+            <a href="{{ url_for('upload') }}">Upload</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </nav>
+
+    <main class="page-shell">
+        <section class="page-header">
+            <p class="eyebrow">Your events</p>
+            <h1>Dashboard</h1>
+            <p>Welcome back{% if session.username %}, {{ session.username }}{% endif %}. Create events, share QR codes, and manage uploads.</p>
+            <div class="page-actions">
+                <a class="button primary" href="{{ url_for('create_event') }}">Create event</a>
+                <a class="button secondary" href="{{ url_for('upload') }}">Upload media</a>
+            </div>
+        </section>
+
+        {% if events %}
+            <section class="media-grid">
+                {% for event in events %}
+                    <article class="media-card">
+                        <div class="qr-box">
+                            <img src="{{ url_for('static', filename='qrcodes/' + event[3] + '.png') }}" alt="QR code for {{ event[1] }}">
+                        </div>
+                        <div class="media-body">
+                            <h2>{{ event[1] }}</h2>
+                            <p>{{ event[2]|format_date }}</p>
+                            <span class="file-badge">QR Code</span>
+                            <div class="card-actions">
+                                <a class="button primary" href="{{ url_for('event_page', event_id=event[0]) }}">View Event</a>
+                                <a class="button secondary" href="{{ url_for('upload', event_id=event[0]) }}">Add Media</a>
+                                <form class="delete-form inline-delete" method="POST" action="{{ url_for('delete_event', event_id=event[0]) }}" onsubmit="return confirm('Delete this event and all its uploads?');">
+                                    <button class="delete-button" type="submit">Delete Event</button>
+                                </form>
+                            </div>
+                        </div>
+                    </article>
+                {% endfor %}
+            </section>
+        {% else %}
+            <section class="empty-state">
+                <p class="eyebrow">No events yet</p>
+                <h2>Create your first event.</h2>
+                <p>After you create an event, Clipora will generate a QR code for guest uploads.</p>
+                <a class="button primary" href="{{ url_for('create_event') }}">Create event</a>
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>

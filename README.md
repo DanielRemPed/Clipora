@@ -8,8 +8,6 @@ Try Clipora here:
 
 **https://clipora-gvuj.onrender.com**
 
----
-
 ## Features
 
 ### Account Management

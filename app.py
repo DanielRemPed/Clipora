@@ -4,12 +4,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import sqlite3
 import os
+import shutil
 import uuid
 import qrcode
 
 app = Flask(__name__)
 
-app.secret_key = "clipora_secret_key"
+app.secret_key = os.environ.get("SECRET_KEY", "clipora_secret_key")
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "mp4", "mov", "webm"}
 
@@ -20,6 +21,22 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def format_date(value):
+    try:
+        if isinstance(value, datetime):
+            date_value = value
+        else:
+            date_value = datetime.fromisoformat(str(value))
+
+        formatted = date_value.strftime("%m/%d/%Y %I:%M %p")
+        return formatted.replace(" 0", " ")
+    except ValueError:
+        return value
+
+
+app.jinja_env.filters["format_date"] = format_date
 
 
 def init_db():
@@ -62,14 +79,7 @@ def init_db():
     conn.close()
 
 def create_qr(event_code):
-    #For testing deployment on render: 
-    #url = f"https://clipora-1.onrender.com/guest_upload/{event_code}"  
-
-    #For deployment on render: 
-    url = f"https://clipora-gvuj.onrender.com/guest_upload/{event_code}"
-    
-    #For virtual environment:
-    #url = f"http://127.0.0.1:5001/guest_upload/{event_code}"
+    url = url_for("guest_upload", event_code=event_code, _external=True)
 
     img = qrcode.make(url)
 
@@ -98,22 +108,24 @@ def register():
 
         hashed_password = generate_password_hash(password)
 
-        try:
-            conn = sqlite3.connect("database.db")
-            cursor = conn.cursor()
+        conn = sqlite3.connect("database.db", timeout=10)
 
+        try:
+            cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO users (username, password_hash) VALUES (?, ?)",
                 (username, hashed_password)
             )
 
             conn.commit()
-            conn.close()
 
             return redirect(url_for("login"))
 
         except sqlite3.IntegrityError:
             return render_template("register.html", error="Username already exists. Please choose a different username.")
+
+        finally:
+            conn.close()
 
     return render_template("register.html")
 
@@ -352,6 +364,43 @@ def dashboard():
         event_media=event_media
     )
 
+@app.route("/delete_event/<int:event_id>", methods=["POST"])
+def delete_event(event_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT event_code FROM events WHERE id = ? AND user_id = ?",
+        (event_id, session["user_id"])
+    )
+
+    event = cursor.fetchone()
+
+    if not event:
+        conn.close()
+        return redirect(url_for("dashboard"))
+
+    event_code = event[0]
+
+    cursor.execute("DELETE FROM uploads WHERE event_id = ?", (event_id,))
+    cursor.execute("DELETE FROM events WHERE id = ? AND user_id = ?", (event_id, session["user_id"]))
+    conn.commit()
+    conn.close()
+
+    event_folder = os.path.join(app.config["UPLOAD_FOLDER"], event_code)
+    qr_path = os.path.join(app.root_path, "static", "qrcodes", event_code + ".png")
+
+    if os.path.exists(event_folder):
+        shutil.rmtree(event_folder)
+
+    if os.path.exists(qr_path):
+        os.remove(qr_path)
+
+    return redirect(url_for("dashboard"))
+
 @app.route("/timeline")
 def timeline():
     if "user_id" not in session:
@@ -516,7 +565,7 @@ def event_page(event_id):
 
     cursor.execute(
         """
-        SELECT filename, uploaded_at
+        SELECT id, filename, uploaded_at
         FROM uploads
         WHERE event_id = ?
         ORDER BY uploaded_at ASC
@@ -537,8 +586,48 @@ def event_page(event_id):
         event=event,
         media=media
     )
+
+@app.route("/delete_media/<int:upload_id>", methods=["POST"])
+def delete_media(upload_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT uploads.filename, uploads.event_id, events.event_code
+        FROM uploads
+        JOIN events ON uploads.event_id = events.id
+        WHERE uploads.id = ? AND events.user_id = ?
+        """,
+        (upload_id, session["user_id"])
+    )
+
+    media = cursor.fetchone()
+
+    if not media:
+        conn.close()
+        return redirect(url_for("dashboard"))
+
+    filename = media[0]
+    event_id = media[1]
+    event_code = media[2]
+
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], event_code, filename)
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    cursor.execute("DELETE FROM uploads WHERE id = ?", (upload_id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("event_page", event_id=event_id))
     
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    port = int(os.environ.get("PORT", 5001))
+    app.run(host="0.0.0.0", port=port, debug=False)

@@ -3,27 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Create Event | Clipora</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <h1>Create Event</h1>
+    <nav class="app-nav">
+        <a class="brand" href="{{ url_for('home') }}">Clipora</a>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('upload') }}">Upload</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </nav>
 
-    {% if error %}
-    <p style="color:red">{{error}}</p>
-    {% endif %}
+    <main class="page-shell narrow">
+        <section class="page-header">
+            <p class="eyebrow">New event</p>
+            <h1>Create Event</h1>
+            <p>Make a new event space and get a QR code guests can use to upload media.</p>
+        </section>
 
-    <form method="POST">
+        {% if error %}
+            <p class="alert">{{ error }}</p>
+        {% endif %}
 
-        <input
-            type="text"
-            name="name"
-            placeholder="Event name"
-            required
-        >
-
-        <button type="submit">
-            Create Event
-        </button>
-    </form>
+        <form class="upload-card" method="POST">
+            <label for="name">Event name</label>
+            <input id="name" type="text" name="name" placeholder="Event name" required>
+            <button class="button primary full" type="submit">Create Event</button>
+        </form>
+    </main>
 </body>
 </html>
